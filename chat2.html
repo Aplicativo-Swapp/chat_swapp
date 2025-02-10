@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat em Tempo Real</title>
+    <style>
+        .chat-container {
+            max-width: 600px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #eee;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .message.sent {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+        }
+        input {
+            width: 80%;
+            padding: 8px;
+            margin-right: 5px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div id="chat-messages" class="chat-messages"></div>
+        <div>
+            <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuração
+        const currentUser = 'user2';  // Alterar para ID do usuário atual
+        const otherUser = 'user1';    // Alterar para ID do outro usuário
+        const API_URL = 'http://localhost:5000';
+        let lastUpdate = new Date().getTime();
+
+        // Função para atualizar o chat
+        async function updateChat() {
+            try {
+                const response = await fetch(`${API_URL}/get_chat_history?user1=${currentUser}&user2=${otherUser}`);
+                const messages = await response.json();
+                
+                const chatDiv = document.getElementById('chat-messages');
+                chatDiv.innerHTML = messages.map(msg => `
+                    <div class="message ${msg.sender === currentUser ? 'sent' : ''}">
+                        <div><strong>${msg.sender}:</strong> ${msg.message}</div>
+                        <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+                
+                // Rolagem automática para a última mensagem
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            } catch (error) {
+                console.error('Erro ao atualizar o chat:', error);
+            }
+        }
+
+        // Função para enviar mensagem
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                try {
+                    await fetch(`${API_URL}/send_message`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender_id: currentUser,
+                            receiver_id: otherUser,
+                            message: message
+                        })
+                    });
+                    input.value = '';
+                    await updateChat();  // Atualiza imediatamente após enviar
+                } catch (error) {
+                    console.error('Erro ao enviar mensagem:', error);
+                }
+            }
+        }
+
+        // Atualização automática a cada 1 segundo
+        setInterval(updateChat, 1000);
+        
+        // Carregar mensagens inicialmente
+        updateChat();
+
+        // Enviar mensagem com Enter
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
